@@ -5,6 +5,7 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
+import re
 
 # --- CONFIG ---
 LINKEDIN_URL = 'https://www.linkedin.com/my-items/saved-jobs/?cardType=APPLIED'
@@ -22,6 +23,21 @@ def get_direct_text(element):
     if element is None:
         return None
     return ''.join(t for t in element.find_all(string=True, recursive=False)).strip()
+
+def split_status(status_text):
+    # Try to split status into action and time using regex
+    # Example: 'Candidature déposée il y a 23 h' -> ('Candidature déposée', 'il y a 23 h')
+    if not status_text:
+        return None, None
+    match = re.match(r'(.+?)( il y a .+)', status_text)
+    if match:
+        return match.group(1).strip(), match.group(2).strip()
+    # Try other patterns, e.g., 'CV téléchargé il y a 5 h', 'Candidature vue il y a 1 j'
+    match = re.match(r'(.+?)( il y a .+)', status_text)
+    if match:
+        return match.group(1).strip(), match.group(2).strip()
+    # If not matched, return the whole as status, None as time
+    return status_text.strip(), None
 
 def main():
     driver = get_driver()
@@ -43,8 +59,10 @@ def main():
         job['company'] = company.get_text(strip=True) if company else None
         location = li.select_one('.xIrTcpbeEHJpnjhTmlNxNrOBpJwtvTjpecBg')
         job['location'] = location.get_text(strip=True) if location else None
-        status = li.select_one('.reusable-search-simple-insight__text--small')
-        job['status'] = status.get_text(strip=True) if status else None
+        # Updated status extraction and splitting
+        status = li.select_one('span.qhJKIVkJwEOmqPDdgPZCvumvunZvpzvAgZM.reusable-search-simple-insight__text--small')
+        status_text = status.get_text(strip=True) if status else None
+        job['status'], job['status_time'] = split_status(status_text)
         logo = li.select_one('img.ivm-view-attr__img--centered')
         job['logo'] = logo['src'] if logo else None
         jobs.append(job)
