@@ -1,5 +1,6 @@
 import time
 import json
+import random
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
@@ -8,7 +9,9 @@ from bs4 import BeautifulSoup
 import re
 
 # --- CONFIG ---
-LINKEDIN_URL = 'https://www.linkedin.com/my-items/saved-jobs/?cardType=APPLIED'
+BASE_URL = 'https://www.linkedin.com/my-items/saved-jobs/?cardType=APPLIED'
+MAX_JOBS = 30  # Set your max jobs here
+OUTPUT_FILE = 'applied_jobs.json'
 
 # --- SETUP SELENIUM ---
 def get_driver():
@@ -39,35 +42,62 @@ def split_status(status_text):
     # If not matched, return the whole as status, None as time
     return status_text.strip(), None
 
-def main():
-    driver = get_driver()
-    driver.get(LINKEDIN_URL)
-    print("Please log in to LinkedIn in the opened browser window.")
-    input("Press Enter after you have logged in and the jobs page is fully loaded...")
-    time.sleep(2)
+def scrape_jobs_from_page(driver):
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     jobs = []
     for li in soup.select('ul[role="list"] > li'):
         job = {}
-        # Get the job title from the specific span class
         title_span = li.select_one('span.mNiKOkGLXopRwvUjiHRjxdaEKEMEvBflk')
         job['title'] = title_span.get_text(strip=True) if title_span else None
-        # Get the job link from the a tag inside the span
         title_link = title_span.find('a', attrs={'data-test-app-aware-link': True}) if title_span else None
         job['link'] = title_link['href'] if title_link else None
         company = li.select_one('.OxRVYBPaMbQwEfslyYadmBWjwaQuFvi')
         job['company'] = company.get_text(strip=True) if company else None
         location = li.select_one('.xIrTcpbeEHJpnjhTmlNxNrOBpJwtvTjpecBg')
         job['location'] = location.get_text(strip=True) if location else None
-        # Updated status extraction and splitting
         status = li.select_one('span.qhJKIVkJwEOmqPDdgPZCvumvunZvpzvAgZM.reusable-search-simple-insight__text--small')
         status_text = status.get_text(strip=True) if status else None
         job['status'], job['status_time'] = split_status(status_text)
         logo = li.select_one('img.ivm-view-attr__img--centered')
         job['logo'] = logo['src'] if logo else None
         jobs.append(job)
+    return jobs
+
+def main():
+    driver = get_driver()
+    all_jobs = []
+    page = 0
+    print("Please log in to LinkedIn in the opened browser window.")
+    url = BASE_URL
+    print(f"[URL] Requesting: {url}")
+    driver.get(url)
+    input("Press Enter after you have logged in and the jobs page is fully loaded...")
+    while len(all_jobs) < MAX_JOBS:
+        if page > 0:
+            url = f"{BASE_URL}&start={page*10}"
+            print(f"[URL] Requesting: {url}")
+            driver.get(url)
+            sleep_time = random.uniform(2.5, 6.0)
+            print(f"[INFO] Sleeping for {sleep_time:.2f} seconds before scraping page {page+1}...")
+            time.sleep(sleep_time)
+        jobs = scrape_jobs_from_page(driver)
+        if not jobs:
+            print(f"[INFO] No more jobs found on page {page+1}. Stopping.")
+            break
+        for job in jobs:
+            print(f"[LOG] {job['title']} | {job['status_time']}")
+        all_jobs.extend(jobs)
+        if len(jobs) < 10:
+            # Last page
+            break
+        page += 1
+        if len(all_jobs) >= MAX_JOBS:
+            break
     driver.quit()
-    print(json.dumps(jobs, indent=2, ensure_ascii=False))
+    all_jobs = all_jobs[:MAX_JOBS]
+    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
+        json.dump(all_jobs, f, ensure_ascii=False, indent=2)
+    print(f"[DONE] Scraped {len(all_jobs)} jobs. Saved to {OUTPUT_FILE}.")
 
 if __name__ == '__main__':
     main() 
