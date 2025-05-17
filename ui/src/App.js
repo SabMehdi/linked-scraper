@@ -25,7 +25,6 @@ const columns = [
   { field: 'location', headerName: 'Lieu', flex: 1 },
   { field: 'status', headerName: 'Statut', flex: 1 },
   { field: 'status_time', headerName: 'Date de candidature', flex: 1 },
-  { field: 'page_number', headerName: 'Page', flex: 0.5, type: 'number' },
   { field: 'link', headerName: 'Lien', flex: 1, renderCell: (params) => (
     <a href={params.value} target="_blank" rel="noopener noreferrer">Voir</a>
   ) },
@@ -51,7 +50,7 @@ function App() {
   );
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
+    <Container maxWidth={false} sx={{ mt: 4,width:'100vw' }}>
       <Paper elevation={3} sx={{ p: 4, mb: 2 }}>
         <Typography variant="h4" gutterBottom>Visualiseur d'offres LinkedIn</Typography>
         <Typography variant="body1" gutterBottom>
