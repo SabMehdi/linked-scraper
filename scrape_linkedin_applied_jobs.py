@@ -81,7 +81,15 @@ def scrape_jobs_from_page(driver):
         company = li.select_one('.OxRVYBPaMbQwEfslyYadmBWjwaQuFvi')
         job['company'] = company.get_text(strip=True) if company else None
         location = li.select_one('.xIrTcpbeEHJpnjhTmlNxNrOBpJwtvTjpecBg')
-        job['location'] = location.get_text(strip=True) if location else None
+        loc_text = location.get_text(strip=True) if location else None
+        # Split location and work style (e.g., 'Paris (Hybride)', 'Lyon (Sur site)', 'Marseille (À distance)')
+        if loc_text and '(' in loc_text and ')' in loc_text:
+            loc_main, loc_style = re.match(r'^(.*?)\s*\((.*?)\)\s*$', loc_text).groups()
+            job['location'] = loc_main.strip()
+            job['work_style'] = loc_style.strip()
+        else:
+            job['location'] = loc_text
+            job['work_style'] = None
         status = li.select_one('span.qhJKIVkJwEOmqPDdgPZCvumvunZvpzvAgZM.reusable-search-simple-insight__text--small')
         status_text = status.get_text(strip=True) if status else None
         job['status'], job['status_time'] = split_status(status_text)

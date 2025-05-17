@@ -30,6 +30,7 @@ const columns = [
   { field: 'title', headerName: 'Titre du poste', flex: 1 },
   { field: 'company', headerName: 'Entreprise', flex: 1 },
   { field: 'location', headerName: 'Lieu', flex: 1 },
+  { field: 'work_style', headerName: 'Mode de travail', flex: 1 },
   { field: 'status', headerName: 'Statut', flex: 1 },
   { field: 'status_time', headerName: 'Date de candidature', flex: 1 },
   { field: 'link', headerName: 'Lien', flex: 1, renderCell: (params) => (
