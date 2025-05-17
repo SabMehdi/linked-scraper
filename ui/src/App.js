@@ -20,6 +20,13 @@ function parseJobsFromFile(file, setJobs, setError, setSnackbarOpen) {
 }
 
 const columns = [
+  { field: 'logo', headerName: 'Logo', flex: 0.5, renderCell: (params) => (
+    params.value ? (
+      <img src={params.value} alt="logo" style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 4, background: '#f5f5f5' }} />
+    ) : (
+      <span style={{ color: '#aaa' }}>Aucun</span>
+    )
+  ) },
   { field: 'title', headerName: 'Titre du poste', flex: 1 },
   { field: 'company', headerName: 'Entreprise', flex: 1 },
   { field: 'location', headerName: 'Lieu', flex: 1 },
