@@ -7,10 +7,11 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import re
+from datetime import datetime, timedelta
 
 # --- CONFIG ---
 BASE_URL = 'https://www.linkedin.com/my-items/saved-jobs/?cardType=APPLIED'
-MAX_JOBS = 30  # Set your max jobs here
+MAX_JOBS = 190  # Set your max jobs here
 OUTPUT_FILE = 'applied_jobs.json'
 
 # --- SETUP SELENIUM ---
@@ -34,7 +35,33 @@ def split_status(status_text):
         return None, None
     match = re.match(r'(.+?)( il y a .+)', status_text)
     if match:
-        return match.group(1).strip(), match.group(2).strip()
+        action = match.group(1).strip()
+        rel_time = match.group(2).strip()
+        # Convert relative time to absolute date
+        abs_date = None
+        now = datetime.now()
+        # Handle days, hours, minutes, weeks, months, years
+        if 'il y a' in rel_time:
+            rel = rel_time.replace('il y a', '').strip()
+            if 'j' in rel:  # days
+                days = int(re.search(r'(\d+)\s*j', rel).group(1))
+                abs_date = (now - timedelta(days=days)).strftime('%Y-%m-%d')
+            elif 'h' in rel:  # hours
+                hours = int(re.search(r'(\d+)\s*h', rel).group(1))
+                abs_date = (now - timedelta(hours=hours)).strftime('%Y-%m-%d')
+            elif 'min' in rel:  # minutes
+                mins = int(re.search(r'(\d+)\s*min', rel).group(1))
+                abs_date = (now - timedelta(minutes=mins)).strftime('%Y-%m-%d')
+            elif 'sem' in rel:  # weeks
+                weeks = int(re.search(r'(\d+)\s*sem', rel).group(1))
+                abs_date = (now - timedelta(weeks=weeks)).strftime('%Y-%m-%d')
+            elif 'mois' in rel:  # months (approximate as 30 days)
+                months = int(re.search(r'(\d+)\s*mois', rel).group(1))
+                abs_date = (now - timedelta(days=months*30)).strftime('%Y-%m-%d')
+            elif 'an' in rel:  # years (approximate as 365 days)
+                years = int(re.search(r'(\d+)\s*an', rel).group(1))
+                abs_date = (now - timedelta(days=years*365)).strftime('%Y-%m-%d')
+        return action, abs_date or rel_time
     # Try other patterns, e.g., 'CV téléchargé il y a 5 h', 'Candidature vue il y a 1 j'
     match = re.match(r'(.+?)( il y a .+)', status_text)
     if match:
