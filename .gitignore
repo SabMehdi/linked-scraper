@@ -1,3 +1,5 @@
 .env
 test.html
 applied_jobs.json
+ui/node_modules
+ui/src/package-lock.json
