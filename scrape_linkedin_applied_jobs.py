@@ -8,10 +8,12 @@ from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import re
 from datetime import datetime, timedelta
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut
 
 # --- CONFIG ---
 BASE_URL = 'https://www.linkedin.com/my-items/saved-jobs/?cardType=APPLIED'
-MAX_JOBS = 190  # Set your max jobs here
+MAX_JOBS = 10  # Set your max jobs here
 OUTPUT_FILE = 'applied_jobs.json'
 
 # --- SETUP SELENIUM ---
@@ -69,7 +71,21 @@ def split_status(status_text):
     # If not matched, return the whole as status, None as time
     return status_text.strip(), None
 
-def scrape_jobs_from_page(driver):
+def geocode_location(location, geolocator):
+    if not location:
+        return None, None
+    try:
+        geo = geolocator.geocode(location, timeout=10)
+        if geo:
+            return geo.latitude, geo.longitude
+    except GeocoderTimedOut:
+        time.sleep(1)
+        return geocode_location(location, geolocator)
+    except Exception:
+        pass
+    return None, None
+
+def scrape_jobs_from_page(driver, geolocator=None):
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     jobs = []
     for li in soup.select('ul[role="list"] > li'):
@@ -90,6 +106,11 @@ def scrape_jobs_from_page(driver):
         else:
             job['location'] = loc_text
             job['work_style'] = None
+        # Geocode location if geolocator is provided
+        if geolocator:
+            lat, lng = geocode_location(job['location'], geolocator)
+            job['lat'] = lat
+            job['lng'] = lng
         status = li.select_one('span.qhJKIVkJwEOmqPDdgPZCvumvunZvpzvAgZM.reusable-search-simple-insight__text--small')
         status_text = status.get_text(strip=True) if status else None
         job['status'], job['status_time'] = split_status(status_text)
@@ -130,6 +151,13 @@ def main():
             break
     driver.quit()
     all_jobs = all_jobs[:MAX_JOBS]
+    # Geocode all jobs after scraping
+    geolocator = Nominatim(user_agent="linkedin-applied-jobs-geocoder")
+    for job in all_jobs:
+        lat, lng = geocode_location(job.get('location'), geolocator)
+        job['lat'] = lat
+        job['lng'] = lng
+        print(f"Geocoded: {job.get('location')} -> {lat}, {lng}")
     with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
         json.dump(all_jobs, f, ensure_ascii=False, indent=2)
     print(f"[DONE] Scraped {len(all_jobs)} jobs. Saved to {OUTPUT_FILE}.")

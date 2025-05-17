@@ -1,8 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Typography, Button, Box, Paper, Snackbar, Alert, TextField } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { frFR } from '@mui/x-data-grid/locales';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix default icon issue for leaflet in React
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
+  iconUrl: require('leaflet/dist/images/marker-icon.png'),
+  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+});
+
+// Geocode a location string to lat/lng using Nominatim
+async function geocodeLocation(location) {
+  if (!location) return null;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data && data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+  } catch (e) {}
+  return null;
+}
 
 function parseJobsFromFile(file, setJobs, setError, setSnackbarOpen) {
   const reader = new FileReader();
@@ -57,6 +82,9 @@ function App() {
     )
   );
 
+  // Geocode all job locations when jobs change
+  const locations = jobs.filter(job => job.lat && job.lng);
+
   return (
     <Container maxWidth={false} sx={{ mt: 4,width:'100vw' }}>
       <Paper elevation={3} sx={{ p: 4, mb: 2 }}>
@@ -93,6 +121,25 @@ function App() {
             disableSelectionOnClick
             sx={{ backgroundColor: 'white', borderRadius: 2 }}
           />
+        </Box>
+        {/* Map Section */}
+        <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>Carte des localisations</Typography>
+        <Box sx={{ height: 400, width: '100%', mb: 2 }}>
+          <MapContainer center={[48.8566, 2.3522]} zoom={5} style={{ height: '100%', width: '100%' }}>
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {locations.map((job, idx) => (
+              <Marker key={idx} position={[job.lat, job.lng]}>
+                <Popup>
+                <b>{job.title}</b><br />
+                {job.company}<br />
+                {job.location}
+              </Popup>
+            </Marker>
+          ))}
+          </MapContainer>
         </Box>
         <Snackbar
           open={snackbarOpen}
