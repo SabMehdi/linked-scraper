@@ -10,11 +10,20 @@ import re
 from datetime import datetime, timedelta
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
+import os
 
 # --- CONFIG ---
 BASE_URL = 'https://www.linkedin.com/my-items/saved-jobs/?cardType=APPLIED'
 MAX_JOBS = 190  # Set your max jobs here
 OUTPUT_FILE = 'applied_jobs.json'
+CACHE_FILE = 'location_cache.json'
+
+# Load location cache if it exists
+if os.path.exists(CACHE_FILE):
+    with open(CACHE_FILE, 'r', encoding='utf-8') as f:
+        location_cache = json.load(f)
+else:
+    location_cache = {}
 
 # --- SETUP SELENIUM ---
 def get_driver():
@@ -74,10 +83,17 @@ def split_status(status_text):
 def geocode_location(location, geolocator):
     if not location:
         return None, None
+    # Check cache first
+    if location in location_cache:
+        coords = location_cache[location]
+        return coords['lat'], coords['lng']
     try:
         geo = geolocator.geocode(location, timeout=10)
         if geo:
-            return geo.latitude, geo.longitude
+            lat, lng = geo.latitude, geo.longitude
+            # Save to cache
+            location_cache[location] = {'lat': lat, 'lng': lng}
+            return lat, lng
     except GeocoderTimedOut:
         time.sleep(1)
         return geocode_location(location, geolocator)
@@ -155,6 +171,9 @@ def main():
         job['lat'] = lat
         job['lng'] = lng
         print(f"Geocoded: {job.get('location')} -> {lat}, {lng}")
+    # Save updated location cache
+    with open(CACHE_FILE, 'w', encoding='utf-8') as f:
+        json.dump(location_cache, f, ensure_ascii=False, indent=2)
     with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
         json.dump(all_jobs, f, ensure_ascii=False, indent=2)
     print(f"[DONE] Scraped {len(all_jobs)} jobs. Saved to {OUTPUT_FILE}.")
