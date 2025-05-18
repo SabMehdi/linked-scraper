@@ -20,6 +20,8 @@ This Python app scrapes your applied jobs from the LinkedIn "Applied Jobs" page 
 3. **Download ChromeDriver:**
    - Download the version matching your Chrome browser from [here](https://sites.google.com/chromium.org/driver/).
    - Place the `chromedriver` executable in your PATH or in the project directory.
+4. **Set the `MAX_JOBS` variable:**
+   - Before running the script, open `scrape_linkedin_applied_jobs.py` and set the `MAX_JOBS` variable to control how many jobs (and thus how many pages) will be scraped.
 
 ## Usage
 1. **Important:** Before running the script, set the `MAX_JOBS` variable in `scrape_linkedin_applied_jobs.py` to control how many jobs (and thus how many pages) will be scraped.

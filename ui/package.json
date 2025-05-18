@@ -10,9 +10,14 @@
     "@mui/x-data-grid": "^8.3.1",
     "@mui/x-data-grid-pro": "^8.3.1",
     "cra-template-pwa": "2.0.0",
+    "firebase": "^11.7.3",
+    "leaflet": "^1.9.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-leaflet": "^5.0.0",
     "react-scripts": "5.0.1",
+    "recharts": "^2.15.3",
+    "ui": "file:",
     "web-vitals": "^5.0.1"
   },
   "scripts": {

@@ -8,11 +8,22 @@ from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import re
 from datetime import datetime, timedelta
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut
+import os
 
 # --- CONFIG ---
 BASE_URL = 'https://www.linkedin.com/my-items/saved-jobs/?cardType=APPLIED'
 MAX_JOBS = 190  # Set your max jobs here
 OUTPUT_FILE = 'applied_jobs.json'
+CACHE_FILE = 'location_cache.json'
+
+# Load location cache if it exists
+if os.path.exists(CACHE_FILE):
+    with open(CACHE_FILE, 'r', encoding='utf-8') as f:
+        location_cache = json.load(f)
+else:
+    location_cache = {}
 
 # --- SETUP SELENIUM ---
 def get_driver():
@@ -69,7 +80,28 @@ def split_status(status_text):
     # If not matched, return the whole as status, None as time
     return status_text.strip(), None
 
-def scrape_jobs_from_page(driver):
+def geocode_location(location, geolocator):
+    if not location:
+        return None, None
+    # Check cache first
+    if location in location_cache:
+        coords = location_cache[location]
+        return coords['lat'], coords['lng']
+    try:
+        geo = geolocator.geocode(location, timeout=10)
+        if geo:
+            lat, lng = geo.latitude, geo.longitude
+            # Save to cache
+            location_cache[location] = {'lat': lat, 'lng': lng}
+            return lat, lng
+    except GeocoderTimedOut:
+        time.sleep(1)
+        return geocode_location(location, geolocator)
+    except Exception:
+        pass
+    return None, None
+
+def scrape_jobs_from_page(driver, geolocator=None):
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     jobs = []
     for li in soup.select('ul[role="list"] > li'):
@@ -81,7 +113,20 @@ def scrape_jobs_from_page(driver):
         company = li.select_one('.OxRVYBPaMbQwEfslyYadmBWjwaQuFvi')
         job['company'] = company.get_text(strip=True) if company else None
         location = li.select_one('.xIrTcpbeEHJpnjhTmlNxNrOBpJwtvTjpecBg')
-        job['location'] = location.get_text(strip=True) if location else None
+        loc_text = location.get_text(strip=True) if location else None
+        # Split location and work style (e.g., 'Paris (Hybride)', 'Lyon (Sur site)', 'Marseille (À distance)')
+        if loc_text and '(' in loc_text and ')' in loc_text:
+            loc_main, loc_style = re.match(r'^(.*?)\s*\((.*?)\)\s*$', loc_text).groups()
+            job['location'] = loc_main.strip()
+            job['work_style'] = loc_style.strip()
+        else:
+            job['location'] = loc_text
+            job['work_style'] = None
+        # Geocode location if geolocator is provided
+        if geolocator:
+            lat, lng = geocode_location(job['location'], geolocator)
+            job['lat'] = lat
+            job['lng'] = lng
         status = li.select_one('span.qhJKIVkJwEOmqPDdgPZCvumvunZvpzvAgZM.reusable-search-simple-insight__text--small')
         status_text = status.get_text(strip=True) if status else None
         job['status'], job['status_time'] = split_status(status_text)
@@ -114,14 +159,21 @@ def main():
         for job in jobs:
             print(f"[LOG] {job['title']} | {job['status_time']}")
         all_jobs.extend(jobs)
-        if len(jobs) < 10:
-            # Last page
-            break
         page += 1
         if len(all_jobs) >= MAX_JOBS:
             break
     driver.quit()
     all_jobs = all_jobs[:MAX_JOBS]
+    # Geocode all jobs after scraping
+    geolocator = Nominatim(user_agent="linkedin-applied-jobs-geocoder")
+    for job in all_jobs:
+        lat, lng = geocode_location(job.get('location'), geolocator)
+        job['lat'] = lat
+        job['lng'] = lng
+        print(f"Geocoded: {job.get('location')} -> {lat}, {lng}")
+    # Save updated location cache
+    with open(CACHE_FILE, 'w', encoding='utf-8') as f:
+        json.dump(location_cache, f, ensure_ascii=False, indent=2)
     with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
         json.dump(all_jobs, f, ensure_ascii=False, indent=2)
     print(f"[DONE] Scraped {len(all_jobs)} jobs. Saved to {OUTPUT_FILE}.")
