@@ -124,7 +124,7 @@ function App() {
         </Box>
         {/* Map Section */}
         <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>Carte des localisations</Typography>
-        <Box sx={{ height: 400, width: '100%', mb: 2 }}>
+        <Box sx={{ height: 800, width: '100%', mb: 2 }}>
           <MapContainer center={[48.8566, 2.3522]} zoom={5} style={{ height: '100%', width: '100%' }}>
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
