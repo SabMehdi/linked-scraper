@@ -3,3 +3,6 @@ test.html
 applied_jobs.json
 ui/node_modules
 ui/src/package-lock.json
+ui/package-lock.json
+applied_jobs.csv
+

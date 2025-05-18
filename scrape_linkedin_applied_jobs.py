@@ -13,7 +13,7 @@ from geopy.exc import GeocoderTimedOut
 
 # --- CONFIG ---
 BASE_URL = 'https://www.linkedin.com/my-items/saved-jobs/?cardType=APPLIED'
-MAX_JOBS = 10  # Set your max jobs here
+MAX_JOBS = 190  # Set your max jobs here
 OUTPUT_FILE = 'applied_jobs.json'
 
 # --- SETUP SELENIUM ---
@@ -143,9 +143,6 @@ def main():
         for job in jobs:
             print(f"[LOG] {job['title']} | {job['status_time']}")
         all_jobs.extend(jobs)
-        if len(jobs) < 10:
-            # Last page
-            break
         page += 1
         if len(all_jobs) >= MAX_JOBS:
             break
