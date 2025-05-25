@@ -1,79 +1,81 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Button, CircularProgress } from '@mui/material';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
-import { db } from './firebase';
-import { ref, get } from 'firebase/database';
-
-function parseJobsFromFile(file, setJobs, setError, setSnackbarOpen) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const jobs = JSON.parse(e.target.result);
-      if (!Array.isArray(jobs)) throw new Error('Format JSON invalide');
-      setJobs(jobs);
-      setSnackbarOpen(true);
-    } catch (err) {
-      setError('Erreur lors de l\'importation du fichier : ' + err.message);
-    }
-  };
-  reader.readAsText(file);
-}
+import React, { useCallback } from 'react';
+import { Box, Button, Typography } from '@mui/material';
+import { useDropzone } from 'react-dropzone';
 
 const FileUpload = ({ setJobs, setError, setSnackbarOpen }) => {
-  const [loading, setLoading] = useState(true);
+  const onDrop = useCallback((acceptedFiles) => {
+    const file = acceptedFiles[0];
+    const reader = new FileReader();
 
-  // Fetch jobs from Firebase on mount
-  useEffect(() => {
-    const fetchJobs = async () => {
+    reader.onabort = () => setError("La lecture du fichier a été annulée");
+    reader.onerror = () => setError("Erreur lors de la lecture du fichier");
+    reader.onload = () => {
       try {
-        const snapshot = await get(ref(db, 'applied_jobs'));
-        if (snapshot.exists()) {
-          const jobs = snapshot.val();
-          if (Array.isArray(jobs)) {
-            setJobs(jobs);
-          } else {
-            setError('Les données de Firebase ne sont pas au format attendu.');
-          }
+        const data = JSON.parse(reader.result);
+        if (!data.applications) {
+          throw new Error("Format de fichier invalide");
         }
-      } catch (err) {
-        setError('Erreur lors de la récupération depuis Firebase : ' + err.message);
-      } finally {
-        setLoading(false);
+
+        // Transform the nested structure into a flat array
+        const transformedJobs = Object.entries(data.applications).flatMap(([companyId, applications]) =>
+          Object.entries(applications).map(([applicationId, job]) => ({
+            id: `${companyId}_${applicationId}`,
+            title: job.job_title,
+            company: job.company_name,
+            location: job.location,
+            work_style: job.work_type,
+            status_time: job.application_date,
+            logo: job.company_logo,
+            status: "Postulé", // Default status since it's not in the new structure
+            application_date: new Date(job.email_date).toLocaleDateString('fr-FR'),
+            last_updated: new Date(job.last_updated).toLocaleDateString('fr-FR')
+          }))
+        );
+
+        setJobs(transformedJobs);
+        setSnackbarOpen(true);
+        setError('');
+      } catch (error) {
+        setError("Erreur lors du traitement du fichier : " + error.message);
       }
     };
-    fetchJobs();
-    // eslint-disable-next-line
-  }, []);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      parseJobsFromFile(file, setJobs, setError, setSnackbarOpen);
-    }
-  };
+    reader.readAsText(file);
+  }, [setJobs, setError, setSnackbarOpen]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { 'application/json': ['.json'] },
+    multiple: false
+  });
 
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-      {loading ? (
-        <>
-          <CircularProgress size={32} />
-          <span style={{ marginLeft: 8 }}>Données en cours de chargement depuis Firebase...</span>
-        </>
+    <Box
+      {...getRootProps()}
+      sx={{
+        border: '2px dashed #ccc',
+        borderRadius: 2,
+        p: 3,
+        mb: 3,
+        textAlign: 'center',
+        cursor: 'pointer',
+        '&:hover': {
+          borderColor: '#1976d2',
+          backgroundColor: '#f5f5f5'
+        }
+      }}
+    >
+      <input {...getInputProps()} />
+      {isDragActive ? (
+        <Typography>Déposez le fichier ici...</Typography>
       ) : (
-        <Button
-          variant="contained"
-          component="label"
-          startIcon={<UploadFileIcon />}
-        >
-          Importer JSON
-          <input
-            type="file"
-            accept="application/json"
-            hidden
-            onChange={handleFileChange}
-          />
-        </Button>
+        <Typography>
+          Glissez et déposez votre fichier ici, ou cliquez pour sélectionner
+        </Typography>
       )}
+      <Button variant="contained" sx={{ mt: 2 }}>
+        Sélectionner un fichier
+      </Button>
     </Box>
   );
 };
