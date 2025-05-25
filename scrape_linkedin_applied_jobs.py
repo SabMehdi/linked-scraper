@@ -29,19 +29,15 @@ else:
 def get_driver():
     options = Options()
     options.add_argument('--start-maximized')
-    # Uncomment below for headless mode
-    # options.add_argument('--headless')
     return webdriver.Chrome(options=options)
 
 def get_direct_text(element):
-    # Get only the direct text of the element, not from its children
     if element is None:
         return None
     return ''.join(t for t in element.find_all(string=True, recursive=False)).strip()
 
 def split_status(status_text):
-    # Try to split status into action and time using regex
-    # Example: 'Candidature déposée il y a 23 h' -> ('Candidature déposée', 'il y a 23 h')
+
     if not status_text:
         return None, None
     match = re.match(r'(.+?)( il y a .+)', status_text)
@@ -51,7 +47,6 @@ def split_status(status_text):
         # Convert relative time to absolute date
         abs_date = None
         now = datetime.now()
-        # Handle days, hours, minutes, weeks, months, years
         if 'il y a' in rel_time:
             rel = rel_time.replace('il y a', '').strip()
             if 'j' in rel:  # days
@@ -73,11 +68,9 @@ def split_status(status_text):
                 years = int(re.search(r'(\d+)\s*an', rel).group(1))
                 abs_date = (now - timedelta(days=years*365)).strftime('%Y-%m-%d')
         return action, abs_date or rel_time
-    # Try other patterns, e.g., 'CV téléchargé il y a 5 h', 'Candidature vue il y a 1 j'
     match = re.match(r'(.+?)( il y a .+)', status_text)
     if match:
         return match.group(1).strip(), match.group(2).strip()
-    # If not matched, return the whole as status, None as time
     return status_text.strip(), None
 
 def geocode_location(location, geolocator):
