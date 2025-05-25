@@ -3,15 +3,14 @@ import { initializeApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  databaseURL: process.env.REACT_APP_FIREBASE_DATABASE_URL,
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID,
+  apiKey: "AIzaSyBPDZOxRXeGvVHwsOZFLPyDvXxQDQRl_Hs",
+  authDomain: "linked-scraper.firebaseapp.com",
+  databaseURL: "https://linked-scrapper-44d7e-default-rtdb.firebaseio.com/",
+  projectId: "linked-scraper",
+  storageBucket: "linked-scraper.appspot.com",
+  messagingSenderId: "1098360466997",
+  appId: "1:1098360466997:web:e7c2c5c2e2c2c2c2e2c2c2"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
