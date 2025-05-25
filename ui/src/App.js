@@ -13,7 +13,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [barParam, setBarParam] = useState('company');
+  const [barParam, setBarParam] = useState('application_date');
   const [lastUpdate, setLastUpdate] = useState(null);
 
   useEffect(() => {
@@ -90,8 +90,8 @@ function App() {
               </Alert>
             )}
             <JobTable jobs={jobs} search={search} setSearch={setSearch} />
-            <MapSection jobs={jobs} />
             <StatsSection jobs={jobs} barParam={barParam} setBarParam={setBarParam} />
+            <MapSection jobs={jobs} />
           </>
         )}
         
